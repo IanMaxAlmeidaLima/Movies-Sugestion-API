@@ -1,0 +1,25 @@
+{
+    "name": "ian/dashboard-composer",
+    "description": "movies suggestions cathalog",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Controller\\": "Controller/",
+            "Model\\": "Model/"
+        },
+        "files": [
+            "Config/configuration.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "ian max",
+            "email": "iancna360@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=8.0",
+        "ext-mbstring": "*"
+    }
+}
