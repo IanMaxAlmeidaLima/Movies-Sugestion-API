@@ -7,6 +7,12 @@ require_once __DIR__ . '/../Config/configuration.php';
 
 class MovieController
 {
+    private $movieModel;
+
+    public function __construct(Movie $movieModel)
+    {
+        $this -> movieModel = $movieModel;
+    }
     public function getMovies()
     {
         $movie = new Movie();
