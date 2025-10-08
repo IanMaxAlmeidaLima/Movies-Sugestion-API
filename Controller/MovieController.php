@@ -1,4 +1,5 @@
 <?php
+
 namespace Controller;
 
 use Model\Movie;
@@ -9,45 +10,63 @@ class MovieController
 {
     private $movieModel;
 
+    // O construtor agora aceita a dependência Movie
     public function __construct(Movie $movieModel)
     {
         $this -> movieModel = $movieModel;
     }
+
+    /**
+     * Retorna a lista de filmes.
+     * @return array|null Retorna a lista de filmes ou null em caso de falha.
+     */
     public function getMovies()
     {
-        $movie = new Movie();
-        $movies = $movie->getMovies();
+        // Usa a dependência injetada para chamar o método do Model
+        $movies = $this->movieModel->getMovies();
 
         if ($movies) {
-            header('Content-Type: application/json', true, 200);
-            echo json_encode($movies);
+            // Retorna o resultado para ser testado
+            return [
+                'status' => 200,
+                'content' => $movies
+            ];
         } else {
-            header('Content-Type: application/json', true, 404);
-            echo json_encode(["message" => "Filmes nao encontrados"]);
+            return [
+                'status' => 404,
+                'content' => ["message" => "Filmes nao encontrados"]
+            ];
         }
     }
 
-    public function createMovie()
+    /**
+     * Cria um ou mais filmes.
+     * @param mixed $data Dados do filme (objeto único ou array de objetos).
+     * @return array Resultado da operação.
+     */
+    public function createMovie($data)
     {
-$data = json_decode(file_get_contents("php://input"));
+        // $data é o corpo da requisição já decodificado (mockado no teste)
+        // A lógica de file_get_contents("php://input") foi removida para testabilidade.
 
         if (is_array($data)) {
             $createdMovies = 0;
             $errors = [];
 
             foreach ($data as $index => $movieData) {
+               
+                
                 if (isset($movieData->title) && isset($movieData->descript) && isset($movieData->rate)) {
                     if ($movieData->rate < 0.0 || $movieData->rate > 9.9) {
                         $errors[] = "Filme " . ($index + 1) . ": Avaliacao deve estar entre 0.0 e 9.9";
                         continue;
                     }
 
-                    $movie = new Movie();
-                    $movie->title = $movieData->title;
-                    $movie->descript = $movieData->descript;
-                    $movie->rate = $movieData->rate;
+                    $this->movieModel->title = $movieData->title;
+                    $this->movieModel->descript = $movieData->descript;
+                    $this->movieModel->rate = $movieData->rate;
 
-                    if ($movie->createMovie()) {
+                    if ($this->movieModel->createMovie()) {
                         $createdMovies++;
                     } else {
                         $errors[] = "Filme " . ($index + 1) . ": Falha ao criar filme";
@@ -58,95 +77,142 @@ $data = json_decode(file_get_contents("php://input"));
             }
 
             if ($createdMovies > 0 && empty($errors)) {
-                header('Content-Type: application/json', true, 201);
-                echo json_encode(["message" => "$createdMovies filmes criados com sucesso"]);
+                return [
+                    'status' => 201,
+                    'content' => ["message" => "$createdMovies filmes criados com sucesso"]
+                ];
             } elseif ($createdMovies > 0 && !empty($errors)) {
-                header('Content-Type: application/json', true, 207); // Multi-Status
-                echo json_encode([
-                    "message" => "$createdMovies filmes criados com sucesso",
-                    "errors" => $errors
-                ]);
+                return [
+                    'status' => 207, // Multi-Status
+                    'content' => [
+                        "message" => "$createdMovies filmes criados com sucesso",
+                        "errors" => $errors
+                    ]
+                ];
             } else {
-                header('Content-Type: application/json', true, 400);
-                echo json_encode([
-                    "message" => "Nenhum filme foi criado",
-                    "errors" => $errors
-                ]);
+                return [
+                    'status' => 400,
+                    'content' => [
+                        "message" => "Nenhum filme foi criado",
+                        "errors" => $errors
+                    ]
+                ];
             }
         } else {
             if (isset($data->title) && isset($data->descript) && isset($data->rate)) {
                 if ($data->rate < 0.0 || $data->rate > 9.9) {
-                    header('Content-Type: application/json', true, 400);
-                    echo json_encode(["message" => "Avaliacao deve estar entre 0.0 e 9.9"]);
-                    return;
+                    return [
+                        'status' => 400,
+                        'content' => ["message" => "Avaliacao deve estar entre 0.0 e 9.9"]
+                    ];
                 }
 
-                $movie = new Movie();
-                $movie->title = $data->title;
-                $movie->descript = $data->descript;
-                $movie->rate = $data->rate;
+                $this->movieModel->title = $data->title;
+                $this->movieModel->descript = $data->descript;
+                $this->movieModel->rate = $data->rate;
 
-                if ($movie->createMovie()) {
-                    header('Content-Type: application/json', true, 201);
-                    echo json_encode(["message" => "Filme criado com sucesso"]);
+                if ($this->movieModel->createMovie()) {
+                    return [
+                        'status' => 201,
+                        'content' => ["message" => "Filme criado com sucesso"]
+                    ];
                 } else {
-                    header('Content-Type: application/json', true, 500);
-                    echo json_encode(["message" => "Falha ao criar filme"]);
+                    return [
+                        'status' => 500,
+                        'content' => ["message" => "Falha ao criar filme"]
+                    ];
                 }
             } else {
-                header('Content-Type: application/json', true, 400);
-                echo json_encode(["message" => "Informação inválida"]);
+                return [
+                    'status' => 400,
+                    'content' => ["message" => "Informação inválida"]
+                ];
             }
         }
     }
 
-    public function updateMovie()
+    /**
+     * Atualiza um filme.
+     * @param object $data Dados do filme a ser atualizado.
+     * @return array Resultado da operação.
+     */
+    public function updateMovie($data)
     {
-        $data = json_decode(file_get_contents("php://input"));
+        // A lógica de file_get_contents("php://input") foi removida para testabilidade.
 
         if (isset($data->id) && isset($data->title) && isset($data->descript) && isset($data->rate)) {
-            $movie = new Movie();
-            $movie->id = $data->id;
-            $movie->title = $data->title;
-            $movie->descript = $data->descript;
-            $movie->rate = $data->rate;
+            // Atribui os dados ao Model injetado
+            $this->movieModel->id = $data->id;
+            $this->movieModel->title = $data->title;
+            $this->movieModel->descript = $data->descript;
+            $this->movieModel->rate = $data->rate;
 
-            if ($movie->updateMovie()) {
-                header('Content-Type: application/json', true, 200);
-                echo json_encode(["message" => "Filme atualizado com sucesso"]);
+            if ($this->movieModel->updateMovie()) {
+                return [
+                    'status' => 200,
+                    'content' => ["message" => "Filme atualizado com sucesso"]
+                ];
             } else {
-                header('Content-Type: application/json', true, 500);
-                echo json_encode(["message" => "Falha ao atualizar filme"]);
+                return [
+                    'status' => 500,
+                    'content' => ["message" => "Falha ao atualizar filme"]
+                ];
             }
         } else {
-            header('Content-Type: application/json', true, 400);
-            echo json_encode(["message" => "Informação invalida"]);
+            return [
+                'status' => 400,
+                'content' => ["message" => "Informação invalida"]
+            ];
         }
     }
 
-    // Função para excluir um filme
-    public function deleteMovie()
+    /**
+     * Exclui um filme.
+     * @param int|null $id ID do filme a ser excluído.
+     * @return array Resultado da operação.
+     */
+    public function deleteMovie($id)
     {
-        // Obtém os dados da requisição
-        $id = $_GET['id'] ?? null; // Verifica se o ID foi passado na URL
+        // A lógica de $_GET['id'] foi removida para testabilidade.
 
         if ($id) {
-            $movie = new Movie();
-            $movie->id = $id;
+            // Atribui o ID ao Model injetado
+            $this->movieModel->id = $id;
 
-            if ($movie->deleteMovie()) {
-                header('Content-Type: application/json', true, 200);
-                echo json_encode(["message" => "Filme excluído com sucesso"]);
+            if ($this->movieModel->deleteMovie()) {
+                return [
+                    'status' => 200,
+                    'content' => ["message" => "Filme excluído com sucesso"]
+                ];
             } else {
-                header('Content-Type: application/json', true, 500);
-                echo json_encode(["message" => "Falha ao excluir filme"]);
+                return [
+                    'status' => 500,
+                    'content' => ["message" => "Falha ao excluir filme"]
+                ];
             }
         } else {
-            header('Content-Type: application/json', true, 400);
-            echo json_encode(["message" => "ID invalido"]);
+            return [
+                'status' => 400,
+                'content' => ["message" => "ID invalido"]
+            ];
         }
+    }
+}
 
+// Funções auxiliares para simular o ambiente de produção
+// No ambiente de produção, o index.php ou router chamaria o controller.
+// Para manter a compatibilidade com o código original, vamos adicionar uma função
+// que simula o comportamento de envio de headers e echo, mas apenas se não estiver
+// em ambiente de teste (para não interferir no PHPUnit).
+
+if (!defined('PHPUNIT_COMPOSER_INSTALL')) {
+    function sendResponse($result) {
+        if (isset($result['status']) && isset($result['content'])) {
+            header('Content-Type: application/json', true, $result['status']);
+            echo json_encode($result['content']);
+        }
     }
 }
 
 ?>
+
